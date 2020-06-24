@@ -80,7 +80,10 @@ class KrakenSocketManager(threading.Thread):
     STREAM_URL = 'wss://ws.kraken.com'
     PRIVATE_STREAM_URL = 'wss://ws-auth.kraken.com'
 
-    def __init__(self):  # client
+    BETA_STREAM_URL = 'wss://ws-beta.kraken.com'
+    BETA_PRIVATE_STREAM_URL = 'wss://ws-auth.kraken.com'
+
+    def __init__(self, beta=False):  # client
         """Initialise the KrakenSocketManager"""
         threading.Thread.__init__(self)
         self.factories = {}
@@ -90,14 +93,21 @@ class KrakenSocketManager(threading.Thread):
         self._user_listen_key = None
         self._user_callback = None
 
+        if beta:
+            self._stream_url = self.BETA_STREAM_URL
+            self._private_stream_url = self.BETA_PRIVATE_STREAM_URL
+        else:
+            self._stream_url = self.STREAM_URL
+            self._private_stream_url = self.PRIVATE_STREAM_URL
+
     def _start_socket(self, id_, payload, callback, private=False):
         if id_ in self._conns:
             return False
 
         if private:
-            factory_url = self.PRIVATE_STREAM_URL
+            factory_url = self._private_stream_url
         else:
-            factory_url = self.STREAM_URL
+            factory_url = self._stream_url
 
         factory = KrakenClientFactory(factory_url, payload=payload)
         factory.base_client = self
@@ -138,7 +148,7 @@ class KrakenSocketManager(threading.Thread):
             return
 
         # disable reconnecting if we are closing
-        self._conns[conn_key].factory = WebSocketClientFactory(self.STREAM_URL)
+        self._conns[conn_key].factory = WebSocketClientFactory(self._stream_url)
         self._conns[conn_key].disconnect()
         del self._conns[conn_key]
 
@@ -165,8 +175,8 @@ class WssClient(KrakenSocketManager):
     # Kraken commands
     ###########################################################################
 
-    def __init__(self, key=None, secret=None, nonce_multiplier=1.0):  # client
-        super().__init__()
+    def __init__(self, key=None, secret=None, nonce_multiplier=1.0, beta=False):  # client
+        super().__init__(beta=beta)
         self.key = key
         self.secret = secret
         self.nonce_multiplier = nonce_multiplier
